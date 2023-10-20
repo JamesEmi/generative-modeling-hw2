@@ -41,6 +41,23 @@ def interpolate_latent_space(gen, path):
     # Use torchvision.utils.save_image to save out the visualization.
     ##################################################################
     pass
+    # Step 1: Generate 100 samples of 128-dim vectors
+    interpolated_images = []
+    for i in range(10):
+        for j in range(10):
+            z = torch.zeros(1, 128)  # Initializing latent vector with zeros
+            z[0][0] = -1 + (2/9) * i  # Interpolation for the first dimension
+            z[0][1] = -1 + (2/9) * j  # Interpolation for the second dimension
+            
+            # Step 2: Forward the sample through the generator
+            img = gen.forward_given_samples(z)  # Assuming the forward_given_samples method takes a batch of samples
+            interpolated_images.append(img)
+            
+    # Concatenating all the generated images
+    all_images = torch.cat(interpolated_images, dim=0)
+    
+    # Step 3: Save out an image holding all 100 samples
+    vutils.save_image(all_images, path, nrow=10, normalize=True, range=(-1, 1))
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################

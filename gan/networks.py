@@ -35,7 +35,7 @@ class UpSampleConv2D(torch.jit.ScriptModule):
         x = F.pixel_shuffle(x, self.upscale_factor)
         
         # 3. Apply 2D Conv to upsampled image and return output
-        return self.conv()     
+        return self.conv(x)     
         
         
         
@@ -160,7 +160,7 @@ class ResBlockDown(torch.jit.ScriptModule):
         ##################################################################
         self.layers = nn.Sequential(
             nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            nn.Conv2d(input_channels, n_filters, kernel_size=kernel_size, stride=1, padding=1) #check kernel_size, should it be 3, or (3,3)??
+            nn.Conv2d(input_channels, n_filters, kernel_size=kernel_size, stride=1, padding=1), #check kernel_size, should it be 3, or (3,3)??
             nn.LeakyReLU(negative_slope=0.1, inplace=True),
             DownSampleConv2D(n_filters, kernel_size=kernel_size)
         )
@@ -303,7 +303,7 @@ class Generator(torch.jit.ScriptModule):
             ResBlockUp(128, 128),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(negative_slope=0.1, inplace=True),
-            nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1)  # Output 3 channels for RGB
+            nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1),  # Output 3 channels for RGB
             nn.Tanh()
         )
         ##################################################################
@@ -397,10 +397,10 @@ class Discriminator(torch.jit.ScriptModule):
         ##################################################################
         
         self.layers = nn.Sequential(
-            ResBlockDown(in_channels=3, out_channels=128),
-            ResBlockDown(in_channels=128, out_channels=128),
-            ResBlock(in_channels=128, out_channels=128),
-            ResBlock(in_channels=128, out_channels=128),
+            ResBlockDown(input_channels=3, n_filters=128),
+            ResBlockDown(input_channels=128, n_filters=128),
+            ResBlock(input_channels=128, n_filters=128),
+            ResBlock(input_channels=128, n_filters=128),
             nn.LeakyReLU(negative_slope=0.1, inplace=True)
         )
         

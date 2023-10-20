@@ -16,6 +16,7 @@ class UpSampleConv2D(torch.jit.ScriptModule):
         self.conv = nn.Conv2d(
             input_channels, n_filters, kernel_size=kernel_size, padding=padding
         )
+        #review this, correct this.
         self.upscale_factor = upscale_factor
 
     @torch.jit.script_method
@@ -105,11 +106,11 @@ class ResBlockUp(torch.jit.ScriptModule):
         # TODO 1.1: Setup the network layers
         ##################################################################
         self.layers = nn.Sequential(
-            nn.BatchNorm2d(input_channels),
+            nn.BatchNorm2d(input_channels), #probably need all the args here that the comments have.
             nn.ReLU(),
             nn.BatchNorm2d(n_filters),
             nn.ReLU(),
-            UpSampleConv2D(n_filters, kernel_size=kernal_size, n_filters=n_filters)) # Refer earlier definition of UpSampleConv2D
+            UpSampleConv2D(n_filters, kernel_size=kernel_size, n_filters=n_filters)) # Refer earlier definition of UpSampleConv2D
             #Refer comments above and update the code. layers ok??
         
         self.upsample_residual = UpSampleConv2D(input_channels, kernel_size=1, n_filters=n_filters)
@@ -127,9 +128,10 @@ class ResBlockUp(torch.jit.ScriptModule):
         # connection. Make sure to upsample the residual before adding it
         # to the layer output.
         ##################################################################
-        out = self.layers(x)
-        residual = self.upsample_residual(x)
-        return out + residual
+        # out = self.layers(x)
+        # residual = self.upsample_residual(x)
+        return self.layers(x).add_(self.upsample_residual(x))
+    
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -157,9 +159,9 @@ class ResBlockDown(torch.jit.ScriptModule):
         # TODO 1.1: Setup the network layers
         ##################################################################
         self.layers = nn.Sequential(
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.Conv2d(input_channels, n_filters, kernel_size=kernel_size, stride=1, padding=1) #check kernel_size, should it be 3, or (3,3)??
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             DownSampleConv2D(n_filters, kernel_size=kernel_size)
         )
             
@@ -175,9 +177,10 @@ class ResBlockDown(torch.jit.ScriptModule):
         # connection. Make sure to downsample the residual before adding
         # it to the layer output.
         ##################################################################
-        out = self.layers(x)
-        residual = self.downsample_residual(x)
-        return out + residual
+        # out = self.layers(x)
+        # residual = self.downsample_residual(x)
+        return self.layers(x).add_(self.downsample_residual(x))
+    
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -201,9 +204,9 @@ class ResBlock(torch.jit.ScriptModule):
         # TODO 1.1: Setup the network layers
         ##################################################################
         self.layers = nn.Sequential(
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.Conv2d(input_channels, n_filters, kernel_size=(3,3), stride=(1,1), padding=(1,1)),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.Conv2d(n_filters, n_filters, kernel_size=(3,3), stride=(1,1), padding=(1,1))
         )
         ##################################################################
@@ -218,6 +221,7 @@ class ResBlock(torch.jit.ScriptModule):
         ##################################################################
         out = self.layers(x)
         return out + x
+        #add inplace operation here and see if it works.
         # For this addtion to work, num of input channels must be the same as num of output channels
         # i.e, n_filters must be same as input_channels!
         ##################################################################
@@ -298,7 +302,7 @@ class Generator(torch.jit.ScriptModule):
             ResBlockUp(128, 128),
             ResBlockUp(128, 128),
             nn.BatchNorm2d(128),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.1, inplace=True),
             nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1)  # Output 3 channels for RGB
             nn.Tanh()
         )
@@ -397,11 +401,13 @@ class Discriminator(torch.jit.ScriptModule):
             ResBlockDown(in_channels=128, out_channels=128),
             ResBlock(in_channels=128, out_channels=128),
             ResBlock(in_channels=128, out_channels=128),
-            nn.ReLU()
+            nn.LeakyReLU(negative_slope=0.1, inplace=True)
         )
         
         # A final dense layer to produce a single output for real/fake classification
         self.dense = nn.Linear(128, 1)
+        #or is it nn.Linear(8192,1)? 
+        
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -413,7 +419,18 @@ class Discriminator(torch.jit.ScriptModule):
         # have been passed in. Make sure to sum across the image
         # dimensions after passing x through self.layers.
         ##################################################################
-        pass
+        
+        x = self.layers(x)
+        # Flatten the feature map while preserving the batch size
+        x = x.view(x.size(0), -1)
+        # Only use the depth of 128 for each image in the batch
+        x = x.mean(dim=1)
+        
+        #pass through dense layer
+        x = self.dense(x)
+        
+        return x        
+        
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################

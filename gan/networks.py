@@ -29,7 +29,7 @@ class UpSampleConv2D(torch.jit.ScriptModule):
         # 3. Apply convolution and return output
         ##################################################################
         # 1. Repeat x channel-wise upscale_factor^2 times
-        x = x.repeat_interleave(int(self.upscale_factor) ** 2, dim=1)
+        x = x.repeat_interleave(int(self.upscale_factor ** 2), dim=1)
         
         # 2. Use torch.nn.PixelShuffle
         x = F.pixel_shuffle(x, self.upscale_factor)
@@ -66,7 +66,7 @@ class DownSampleConv2D(torch.jit.ScriptModule):
         ##################################################################
         
         #1
-        x = F.PixelUnshuffle(x, self.downscale_ratio)
+        x = F.pixel_unshuffle(x, self.downscale_ratio)
         #check if this ok or if I have to permute with something like x = x = x.permute(0, 1, 3, 5, 2, 4)
         
         #2
@@ -74,7 +74,7 @@ class DownSampleConv2D(torch.jit.ScriptModule):
         
         #3
         x = x.mean(dim=1, keepdim=True)
-        x = self.conv(x)
+        return self.conv(x)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -104,9 +104,9 @@ class ResBlockUp(torch.jit.ScriptModule):
         # TODO 1.1: Setup the network layers
         ##################################################################
         self.layers = nn.Sequential(
-            nn.BatchNorm2d(in_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), #probably need all the args here that the comments have.
+            nn.BatchNorm2d(input_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), #probably need all the args here that the comments have.
             nn.ReLU(),
-            nn.BatchNorm2d(in_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+            nn.BatchNorm2d(input_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             nn.ReLU(),
             UpSampleConv2D(n_filters, kernel_size=kernel_size, n_filters=n_filters)) # Refer earlier definition of UpSampleConv2D
             #Refer comments above and update the code. layers ok??
@@ -178,8 +178,9 @@ class ResBlockDown(torch.jit.ScriptModule):
         ##################################################################
         # out = self.layers(x)
         # residual = self.downsample_residual(x)
-        return self.layers(x).add_(self.downsample_residual(x))
-    
+        
+        # return self.layers(x).add_(self.downsample_residual(x))
+        return self.layers(x) + self.downsample_residual(x)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################

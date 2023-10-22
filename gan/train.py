@@ -28,8 +28,21 @@ def get_optimizers_and_schedulers(gen, disc):
     # The learning rate for the generator should be decayed to 0 over
     # 100K iterations.
     ##################################################################
-    scheduler_discriminator = None
-    scheduler_generator = None
+    # scheduler_discriminator = None
+    # scheduler_generator = None
+    
+    total_iterations_discriminator = 500000
+    total_iterations_generator = 100000
+
+    # Lambda functions that define the learning rate decay
+    lambda_discriminator = lambda iteration: 1 - iteration / total_iterations_discriminator
+    lambda_generator = lambda iteration: 1 - iteration / total_iterations_generator
+
+    # Set up the schedulers using LambdaLR
+    scheduler_discriminator = torch.optim.lr_scheduler.LambdaLR(optim_discriminator, lr_lambda=lambda_discriminator)
+    scheduler_generator = torch.optim.lr_scheduler.LambdaLR(optim_generator, lr_lambda=lambda_generator)
+
+    
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -71,8 +84,11 @@ def train_model(
 ):
     torch.backends.cudnn.benchmark = True # speed up training
     ds_transforms = build_transforms()
+    dataset = Dataset(root="/notebooks/Homework/hw2/generative-modeling-hw2/gan/datasets/CUB_200_2011_32", transform=ds_transforms)
+    print(f"Number of images found: {len(dataset)}")
     train_loader = torch.utils.data.DataLoader(
-        Dataset(root="../datasets/CUB_200_2011_32", transform=ds_transforms),
+        dataset,
+        # /notebooks/Homework/hw2/generative-modeling-hw2/gan/datasets/CUB_200_2011_32
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -105,8 +121,18 @@ def train_model(
                 # 2. Compute discriminator output on the train batch.
                 # 3. Compute the discriminator output on the generated data.
                 ##################################################################
-                discrim_real = None
-                discrim_fake = None
+                # 1. Compute generator output
+                z = torch.randn(train_batch.size(0), 128).cuda()  # Assuming latent vector size is 128
+                fake_batch = gen(z)
+                
+                # 2. Compute discriminator output on the train batch.
+                discrim_real = disc(train_batch)
+                
+                # 3. Compute the discriminator output on the generated data.
+                discrim_fake = disc(fake_batch)
+                
+                # discrim_real = None
+                # discrim_fake = None
                 ##################################################################
                 #                          END OF YOUR CODE                      #
                 ##################################################################
@@ -115,8 +141,10 @@ def train_model(
                 # TODO 1.5 Compute the interpolated batch and run the
                 # discriminator on it.
                 ###################################################################
-                interp = None
-                discrim_interp = None
+                alpha = torch.rand(train_batch.size(0), 1, 1, 1).cuda()
+                interp = alpha * train_batch + (1 - alpha) * fake_batch
+                interp.requires_grad_(True)
+                discrim_interp = disc(interp)
                 ##################################################################
                 #                          END OF YOUR CODE                      #
                 ##################################################################
@@ -136,8 +164,9 @@ def train_model(
                     # TODO 1.2: Compute generator and discriminator output on
                     # generated data.
                     ###################################################################
-                    fake_batch = None
-                    discrim_fake = None
+                    z = torch.randn(train_batch.size(0), 128).cuda()  # Assuming latent vector size is 128
+                    fake_batch = gen(z)
+                    discrim_fake = disc(fake_batch)
                     ##################################################################
                     #                          END OF YOUR CODE                      #
                     ##################################################################
@@ -156,7 +185,10 @@ def train_model(
                         # TODO 1.2: Generate samples using the generator.
                         # Make sure they lie in the range [0, 1]!
                         ##################################################################
-                        generated_samples = None
+                        z = torch.randn(100, 128).cuda()  # Generating 100 samples, assuming latent vector size is 128
+                        generated_samples = gen(z)
+                        generated_samples = (generated_samples + 1) / 2  # Rescale to [0, 1]
+                        # generated_samples = None
                         ##################################################################
                         #                          END OF YOUR CODE                      #
                         ##################################################################

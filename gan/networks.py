@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 
 class UpSampleConv2D(torch.jit.ScriptModule):
@@ -189,8 +191,8 @@ class ResBlockDown(torch.jit.ScriptModule):
         # out = self.layers(x)
         # residual = self.downsample_residual(x)
         
-        # return self.layers(x).add_(self.downsample_residual(x))
-        return self.layers(x) + self.downsample_residual(x)
+        return self.layers(x).add_(self.downsample_residual(x))
+        # return self.layers(x) + self.downsample_residual(x)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -230,7 +232,6 @@ class ResBlock(torch.jit.ScriptModule):
         # connection!
         ##################################################################
         return x.add_(self.layers(x))
-        # add inplace operation here and see if it works.
         # For this addtion to work, num of input channels must be the same as num of output channels
         # i.e, n_filters must be same as input_channels!
         ##################################################################
@@ -326,20 +327,27 @@ class Generator(torch.jit.ScriptModule):
         # been passed in. Don't forget to re-shape the output of the dense
         # layer into an image with the appropriate size!
         ##################################################################
+        # print("z device:", z.device)
+        # print("dense weight device:", self.dense.weight.device)
+        print("z device:", z.device)
+        
         x = self.dense(z)
         x = x.view(x.size(0), 128, 4, 4) # Reshape to image
+        print("x device:", x.device)
+        
         return self.layers(x)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
 
     @torch.jit.script_method
-    def forward(self, z, n_samples: int = 1024):
+    def forward(self, z, n_samples: int = 256): #this being 1024 is causing a clash with batch size 256
         ##################################################################
         # TODO 1.1: Generate n_samples latents and forward through the
         # network.
         ##################################################################
-        z = torch.randn((n_samples, 128)).cuda()  # Assuming the latent space is 128-dimensional
+        print("z device in general forward:", z.device)
+        # z = torch.randn((n_samples, 128)).cuda()  # Assuming the latent space is 128-dimensional
         return self.forward_given_samples(z)
         ##################################################################
         #                          END OF YOUR CODE                      #
@@ -416,7 +424,7 @@ class Discriminator(torch.jit.ScriptModule):
         # A final dense layer to produce a single output for real/fake classification
         self.dense = nn.Linear(128, 1)
         #or is it nn.Linear(8192,1)? 
-        
+    
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -430,13 +438,18 @@ class Discriminator(torch.jit.ScriptModule):
         ##################################################################
         
         x = self.layers(x)
+        # print(x.shape)
+        
+        x = x.mean(dim=[2,3])
+        # print(x.shape)
         # Flatten the feature map while preserving the batch size
-        x = x.view(x.size(0), -1)
+        # x = x.view(x.size(0), -1)
+        
         # Only use the depth of 128 for each image in the batch
-        x = x.mean(dim=1)
         
         #pass through dense layer
         x = self.dense(x)
+        # print(x.shape)
         
         return x        
         

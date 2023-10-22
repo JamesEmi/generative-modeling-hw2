@@ -329,11 +329,11 @@ class Generator(torch.jit.ScriptModule):
         ##################################################################
         # print("z device:", z.device)
         # print("dense weight device:", self.dense.weight.device)
-        print("z device:", z.device)
+        # print("z device:", z.device)
         
         x = self.dense(z)
         x = x.view(x.size(0), 128, 4, 4) # Reshape to image
-        print("x device:", x.device)
+        # print("x device:", x.device)
         
         return self.layers(x)
         ##################################################################
@@ -346,7 +346,7 @@ class Generator(torch.jit.ScriptModule):
         # TODO 1.1: Generate n_samples latents and forward through the
         # network.
         ##################################################################
-        print("z device in general forward:", z.device)
+        # print("z device in general forward:", z.device)
         # z = torch.randn((n_samples, 128)).cuda()  # Assuming the latent space is 128-dimensional
         return self.forward_given_samples(z)
         ##################################################################

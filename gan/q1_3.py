@@ -3,6 +3,7 @@ import os
 from utils import get_args
 
 import torch
+import torch.nn as nn
 
 from networks import Discriminator, Generator
 import torch.nn.functional as F
@@ -20,7 +21,8 @@ def compute_discriminator_loss(
     discrim_zeros = torch.zeros_like(discrim_fake)
     discrim_ones = torch.ones_like(discrim_real)
     
-    loss = nn.BCEWithLogitsLoss(discrim_real, discrim_ones) + nn.BCEWithLogitsLoss(discrim_fake, discrim_zeros)
+    criterion = nn.BCEWithLogitsLoss()
+    loss = criterion(discrim_real, discrim_ones) + criterion(discrim_fake, discrim_zeros)
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -32,7 +34,8 @@ def compute_generator_loss(discrim_fake):
     # TODO 1.3: Implement GAN loss for the generator.
     ##################################################################
     discrim_ones = torch.ones_like(discrim_fake)
-    loss = nn.BCEWithLogitsLoss(discrim_fake, discrim_ones)
+    criterion = nn.BCEWithLogitsLoss()
+    loss = criterion(discrim_fake, discrim_ones)
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -42,7 +45,11 @@ def compute_generator_loss(discrim_fake):
 if __name__ == "__main__":
     args = get_args()
     gen = Generator().cuda()
+    # for name, param in gen.named_parameters():
+    #     print(f"Parameter {name} is on {param.device}")
+    
     disc = Discriminator().cuda()
+        
     prefix = "data_gan/"
     os.makedirs(prefix, exist_ok=True)
 

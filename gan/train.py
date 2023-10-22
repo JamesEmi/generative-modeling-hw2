@@ -7,6 +7,7 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from PIL import Image
 from torchvision.datasets import VisionDataset
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def build_transforms():
@@ -111,7 +112,7 @@ def train_model(
     while iters < num_iterations:
         for train_batch in train_loader:
             with torch.cuda.amp.autocast(enabled=amp_enabled):
-                train_batch = train_batch.cuda()
+                train_batch = train_batch.to(DEVICE)
                 
                 ####################### UPDATE DISCRIMINATOR #####################
                 ##################################################################
@@ -122,8 +123,10 @@ def train_model(
                 # 3. Compute the discriminator output on the generated data.
                 ##################################################################
                 # 1. Compute generator output
-                z = torch.randn(train_batch.size(0), 128).cuda()  # Assuming latent vector size is 128
+                z = torch.randn(train_batch.size(0), 128).to(DEVICE)  # Assuming latent vector size is 128
+                print(z.shape)
                 fake_batch = gen(z)
+                # print(fake_batch.shape)
                 
                 # 2. Compute discriminator output on the train batch.
                 discrim_real = disc(train_batch)
@@ -141,7 +144,7 @@ def train_model(
                 # TODO 1.5 Compute the interpolated batch and run the
                 # discriminator on it.
                 ###################################################################
-                alpha = torch.rand(train_batch.size(0), 1, 1, 1).cuda()
+                alpha = torch.rand(train_batch.size(0), 1, 1, 1).to(DEVICE)
                 interp = alpha * train_batch + (1 - alpha) * fake_batch
                 interp.requires_grad_(True)
                 discrim_interp = disc(interp)
@@ -156,6 +159,7 @@ def train_model(
             optim_discriminator.zero_grad(set_to_none=True)
             scaler.scale(discriminator_loss).backward()
             scaler.step(optim_discriminator)
+            optim_discriminator.step()  # Explicitly calling optimizer's step function.
             scheduler_discriminator.step()
 
             if iters % 5 == 0:
@@ -164,9 +168,12 @@ def train_model(
                     # TODO 1.2: Compute generator and discriminator output on
                     # generated data.
                     ###################################################################
-                    z = torch.randn(train_batch.size(0), 128).cuda()  # Assuming latent vector size is 128
-                    fake_batch = gen(z)
-                    discrim_fake = disc(fake_batch)
+                    z = torch.randn(train_batch.size(0), 128).to(DEVICE)  # Assuming latent vector size is 128
+                    # print(z.shape)
+                    fake_batch = gen(z).to(DEVICE)
+                    # print(fake_batch.shape)
+                    
+                    discrim_fake = disc(fake_batch).to(DEVICE)
                     ##################################################################
                     #                          END OF YOUR CODE                      #
                     ##################################################################
@@ -176,6 +183,7 @@ def train_model(
                 optim_generator.zero_grad(set_to_none=True)
                 scaler.scale(generator_loss).backward()
                 scaler.step(optim_generator)
+                optim_generator.step()  # Explicitly calling optimizer's step function.
                 scheduler_generator.step()
 
             if iters % log_period == 0 and iters != 0:
@@ -185,8 +193,8 @@ def train_model(
                         # TODO 1.2: Generate samples using the generator.
                         # Make sure they lie in the range [0, 1]!
                         ##################################################################
-                        z = torch.randn(100, 128).cuda()  # Generating 100 samples, assuming latent vector size is 128
-                        generated_samples = gen(z)
+                        z = torch.randn(100, 128).to(DEVICE)  # Generating 100 samples, assuming latent vector size is 128
+                        generated_samples = gen(z).to(DEVICE)
                         generated_samples = (generated_samples + 1) / 2  # Rescale to [0, 1]
                         # generated_samples = None
                         ##################################################################

@@ -18,7 +18,10 @@ def ae_loss(model, x):
     ##################################################################
     # TODO 2.2: Fill in MSE loss between x and its reconstruction.
     ##################################################################
-    loss = None
+    x_recon = model(x)
+    
+    criterion = nn.MSELoss(reduction='mean') 
+    loss = criterion(x, x_recon)
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################

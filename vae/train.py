@@ -18,7 +18,7 @@ def ae_loss(model, x):
     ##################################################################
     # TODO 2.2: Fill in MSE loss between x and its reconstruction.
     ##################################################################
-    z = model.encoder() # Use the encoder to get the latent representation
+    z = model.encoder(x) # Use the encoder to get the latent representation
     x_recon = model.decoder(z) # Use the decoder to get the reconstruction
     
     criterion = nn.MSELoss(reduction='mean') 
@@ -42,9 +42,25 @@ def vae_loss(model, x, beta = 1):
     # closed form, you can find the formula here:
     # (https://stats.stackexchange.com/questions/318748/deriving-the-kl-divergence-loss-for-vaes).
     ##################################################################
-    total_loss = None
-    recon_loss = None
-    kl_loss = None
+    # Forward pass through the model to get the reconstructed output and the latent variables
+    mu, log_std = model.encoder(x)
+    std = torch.exp(log_std)
+    z = mu + std * torch.randn_like(std)  # Reparameterization trick
+    x_recon = model.decoder(z)
+
+    # Reconstruction loss (MSE)
+    recon_loss_per_sample = ((x - x_recon)**2).mean(dim=(1, 2, 3))
+    recon_loss = recon_loss_per_sample.mean()
+    
+     # KL divergence in closed form
+    kl_loss = 0.5 * (mu**2 + std**2 - 2*log_std - 1).sum(dim=1).mean()
+        
+    # Total VAE loss
+    total_loss = recon_loss + beta * kl_loss
+    
+    # total_loss = None
+    # recon_loss = None
+    # kl_loss = None
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################

@@ -60,7 +60,10 @@ class VAEEncoder(Encoder):
         # TODO 2.4: Fill in self.fc, such that output dimension is
         # 2*self.latent_dim
         ##################################################################
+        # We assume that the base size after convolutions in the Encoder is 256 x 8 x 8
+        # self.fc = nn.Linear(256 * 8 * 8, 2 * latent_dim)
         self.fc = None
+        
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -70,8 +73,15 @@ class VAEEncoder(Encoder):
         # TODO 2.1: Forward pass through the network, should return a
         # tuple of 2 tensors, mu and log_std
         ##################################################################
-        mu = None
-        log_std = None
+        # First, we pass through the conv layers from the Encoder base class
+        x = super().forward(x)
+        
+        # Then, pass through the fc layer
+        x = self.fc(x)
+        # mu = None
+        # log_std = None
+        # Split the tensor into mu and log_std
+        mu, log_std = torch.chunk(x, 2, dim=1)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################

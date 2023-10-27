@@ -18,7 +18,8 @@ def ae_loss(model, x):
     ##################################################################
     # TODO 2.2: Fill in MSE loss between x and its reconstruction.
     ##################################################################
-    x_recon = model(x)
+    z = model.encoder() # Use the encoder to get the latent representation
+    x_recon = model.decoder(z) # Use the decoder to get the reconstruction
     
     criterion = nn.MSELoss(reduction='mean') 
     loss = criterion(x, x_recon)

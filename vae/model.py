@@ -35,7 +35,8 @@ class Encoder(nn.Module):
         )
         
         # Assuming 64x64 inputs, the output of the conv layers is 256 channels of 8x8 images
-        self.fc = nn.Linear(256*8*8, latent_dim)
+        # Assuming 32x32 inputs:
+        self.fc = nn.Linear(256*4*4, latent_dim)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -46,7 +47,9 @@ class Encoder(nn.Module):
         # of dimension == self.latent_dim
         ##################################################################
         x = self.convs(x)
-        x = x.view(x.size(0), -1) # Flatten the output
+        # print('x shape after conv is:' + str(x.shape))
+        x = x.view(x.size(0), -1) # Flatten the outputlmao
+        # print('x shape after flattening is:' + str(x.shape))
         x = self.fc(x)
         return x
         ##################################################################
@@ -60,9 +63,9 @@ class VAEEncoder(Encoder):
         # TODO 2.4: Fill in self.fc, such that output dimension is
         # 2*self.latent_dim
         ##################################################################
-        # We assume that the base size after convolutions in the Encoder is 256 x 8 x 8
-        # self.fc = nn.Linear(256 * 8 * 8, 2 * latent_dim)
-        self.fc = None
+        # We assume that the base size after convolutions in the Encoder is 256 x 4 x 4
+        # since the Encoder has been modified to expect 32x32 inputs.
+        self.fc = nn.Linear(256 * 4 * 4, 2 * latent_dim)
         
         ##################################################################
         #                          END OF YOUR CODE                      #
@@ -74,10 +77,14 @@ class VAEEncoder(Encoder):
         # tuple of 2 tensors, mu and log_std
         ##################################################################
         # First, we pass through the conv layers from the Encoder base class
-        x = super().forward(x)
-        
+        x = self.convs(x)
+        # print('VAE: x shape after conv is:' + str(x.shape))
+        x = x.view(x.size(0), -1) #flatten output
+        # x = x.view(x.size(0), 256*4*4) #flatten output
+        # print('VAE: x shape after flatten is:' + str(x.shape))
         # Then, pass through the fc layer
         x = self.fc(x)
+        # print('VAE: x shape after forward is:' + str(x.shape))
         # mu = None
         # log_std = None
         # Split the tensor into mu and log_std
@@ -111,7 +118,7 @@ class Decoder(nn.Module):
         # self.base_size, then create the self.fc and self.deconvs.
         ##################################################################
         # Base size is 256 channels of 8x8 images
-        self.base_size = (256, 8, 8)
+        self.base_size = (256, 4, 4)
         
         # Set up the fully connected layer to transform latent_dim to base_size
         self.fc = nn.Linear(latent_dim, np.prod(self.base_size))

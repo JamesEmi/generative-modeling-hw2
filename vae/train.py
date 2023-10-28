@@ -21,8 +21,8 @@ def ae_loss(model, x):
     z = model.encoder(x) # Use the encoder to get the latent representation
     x_recon = model.decoder(z) # Use the decoder to get the reconstruction
     
-    criterion = nn.MSELoss(reduction='mean') 
-    loss = criterion(x, x_recon)
+    criterion = nn.MSELoss(reduction='sum') 
+    loss = criterion(x, x_recon) / x.shape[0]
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -49,14 +49,20 @@ def vae_loss(model, x, beta = 1):
     x_recon = model.decoder(z)
 
     # Reconstruction loss (MSE)
-    recon_loss_per_sample = ((x - x_recon)**2).mean(dim=(1, 2, 3))
-    recon_loss = recon_loss_per_sample.mean()
+    recon_loss = F.mse_loss(x_recon, x, reduction='sum') / len(x)
     
      # KL divergence in closed form
-    kl_loss = 0.5 * (mu**2 + std**2 - 2*log_std - 1).sum(dim=1).mean()
+    kl_loss = (0.5 * torch.sum(mu**2 + std**2 - 2*log_std - 1, 1)).mean()
         
     # Total VAE loss
     total_loss = recon_loss + beta * kl_loss
+
+    # mu, log_var = model.encoder(x)
+    # std, var = torch.exp(log_var / 2), torch.exp(log_var)
+    # epsilon = torch.randn_like(std).cuda()
+    # recon_loss = F.mse_loss(model.decoder(mu + std * epsilon), x, reduction='sum') / len(x)
+    # kl_loss = torch.mean(-1/2 * torch.sum(1 + log_var - mu ** 2 - var, 1))
+    # total_loss = recon_loss + beta * kl_loss
     
     # total_loss = None
     # recon_loss = None
@@ -78,7 +84,7 @@ def linear_beta_scheduler(max_epochs=None, target_val = 1):
     # linearly from 0 at epoch 0 to target_val at epoch max_epochs.
     ##################################################################
     def _helper(epoch):
-        pass
+        return (target_val / max_epochs) * epoch
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################

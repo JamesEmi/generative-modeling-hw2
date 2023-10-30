@@ -347,7 +347,7 @@ class Generator(torch.jit.ScriptModule):
         # network.
         ##################################################################
         # print("z device in general forward:", z.device)
-        z = torch.normal(0, 1, size=(n_samples,128)).to(torch.float16).to(torch.device('cuda'))
+        z = torch.normal(0., 1., size=(n_samples,128)).to(torch.float16).to(torch.device('cuda'))
         return self.forward_given_samples(z)
         ##################################################################
         #                          END OF YOUR CODE                      #

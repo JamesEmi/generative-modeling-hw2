@@ -123,9 +123,8 @@ def train_model(
                 # 3. Compute the discriminator output on the generated data.
                 ##################################################################
                 # 1. Compute generator output
-                z = torch.randn(train_batch.size(0), 128).to(DEVICE)  # Assuming latent vector size is 128
-                print(z.shape)
-                fake_batch = gen(z)
+                # z = torch.randn(train_batch.size(0), 128).to(DEVICE)  # Assuming latent vector size is 128
+                fake_batch = gen(train_batch.shape[0])
                 # print(fake_batch.shape)
                 
                 # 2. Compute discriminator output on the train batch.
@@ -134,8 +133,6 @@ def train_model(
                 # 3. Compute the discriminator output on the generated data.
                 discrim_fake = disc(fake_batch)
                 
-                # discrim_real = None
-                # discrim_fake = None
                 ##################################################################
                 #                          END OF YOUR CODE                      #
                 ##################################################################
@@ -145,8 +142,10 @@ def train_model(
                 # discriminator on it.
                 ###################################################################
                 alpha = torch.rand(train_batch.size(0), 1, 1, 1).to(DEVICE)
+                print(alpha.shape)
+                print(train_batch.shape)
+                print(fake_batch.shape)
                 interp = alpha * train_batch + (1 - alpha) * fake_batch
-                interp.requires_grad_(True)
                 discrim_interp = disc(interp)
                 ##################################################################
                 #                          END OF YOUR CODE                      #
@@ -168,12 +167,10 @@ def train_model(
                     # TODO 1.2: Compute generator and discriminator output on
                     # generated data.
                     ###################################################################
-                    z = torch.randn(train_batch.size(0), 128).to(DEVICE)  # Assuming latent vector size is 128
-                    # print(z.shape)
-                    fake_batch = gen(z).to(DEVICE)
+                    fake_batch = gen(train_batch.shape[0])
                     # print(fake_batch.shape)
                     
-                    discrim_fake = disc(fake_batch).to(DEVICE)
+                    discrim_fake = disc(fake_batch)
                     ##################################################################
                     #                          END OF YOUR CODE                      #
                     ##################################################################
@@ -192,9 +189,8 @@ def train_model(
                         ##################################################################
                         # TODO 1.2: Generate samples using the generator.
                         # Make sure they lie in the range [0, 1]!
-                        ##################################################################
-                        z = torch.randn(100, 128).to(DEVICE)  # Generating 100 samples, assuming latent vector size is 128
-                        generated_samples = gen(z).to(DEVICE)
+                        #################################################################
+                        generated_samples = gen(train_batch.shape[0])
                         generated_samples = (generated_samples + 1) / 2  # Rescale to [0, 1]
                         # generated_samples = None
                         ##################################################################

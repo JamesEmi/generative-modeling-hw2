@@ -72,8 +72,7 @@ class DownSampleConv2D(torch.jit.ScriptModule):
         #check if this ok or if I have to permute with something like x = x = x.permute(0, 1, 3, 5, 2, 4)
         
         #2
-        # x = x.reshape(x.shape[0], -1, int(self.downscale_ratio ** 2), x.shape[2], x.shape[3])
-        x = x.view(x.size(0), x.size(1) // int(self.downscale_ratio**2), int(self.downscale_ratio**2), x.size(2), x.size(3))
+        x= x.reshape(x.shape[0], -1, int(self.downscale_ratio**2), x.shape[2], x.shape[3])
         
         #3
         # x = x.mean(dim=1, keepdim=True)

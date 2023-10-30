@@ -77,7 +77,7 @@ class DownSampleConv2D(torch.jit.ScriptModule):
         
         #3
         # x = x.mean(dim=1, keepdim=True)
-        x = x.mean(2)
+        x = torch.mean(x, dim=2)
         return self.conv(x)
         ##################################################################
         #                          END OF YOUR CODE                      #
@@ -108,10 +108,10 @@ class ResBlockUp(torch.jit.ScriptModule):
         # TODO 1.1: Setup the network layers
         ##################################################################
         self.layers = nn.Sequential(
-            nn.BatchNorm2d(input_channels), #probably need all the args here that the comments have.
+            nn.BatchNorm2d(input_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), #probably need all the args here that the comments have.
             nn.ReLU(),
             nn.Conv2d(input_channels, n_filters, kernel_size=kernel_size, stride=stride, padding=1, bias=False), #careful with the padding here.
-            nn.BatchNorm2d(n_filters),
+            nn.BatchNorm2d(n_filters, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             nn.ReLU(),
             UpSampleConv2D(n_filters, kernel_size=kernel_size, n_filters=n_filters)) # Refer earlier definition of UpSampleConv2D
             #Refer comments above and update the code. layers ok??
@@ -133,7 +133,7 @@ class ResBlockUp(torch.jit.ScriptModule):
         ##################################################################
         # out = self.layers(x)
         # residual = self.upsample_residual(x)
-        return self.layers(x).add_(self.upsample_residual(x))
+        return (self.layers(x)).add_(self.upsample_residual(x))
 #         print("Before layers:", x.shape)
 #         x1 = self.layers(x)
 #         print("After layers:", x1.shape)
@@ -176,7 +176,7 @@ class ResBlockDown(torch.jit.ScriptModule):
             DownSampleConv2D(input_channels = n_filters, n_filters = n_filters, kernel_size=kernel_size)
         ) #Try and streamline that last part; had to do it explicitly because the order was all messed up.
             
-        self.downsample_residual = DownSampleConv2D(input_channels, n_filters = n_filters, kernel_size=3, stride=1)
+        self.downsample_residual = DownSampleConv2D(input_channels, n_filters = n_filters, kernel_size=1, padding=0)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -311,7 +311,7 @@ class Generator(torch.jit.ScriptModule):
             ResBlockUp(input_channels=128, n_filters=128),
             ResBlockUp(input_channels=128, n_filters=128),
             ResBlockUp(input_channels=128, n_filters=128),
-            nn.BatchNorm2d(128),
+            nn.BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             nn.ReLU(),
             nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1),  # Output 3 channels for RGB
             nn.Tanh()
@@ -332,7 +332,7 @@ class Generator(torch.jit.ScriptModule):
         # print("z device:", z.device)
         
         x = self.dense(z)
-        x = x.view(x.size(0), 128, 4, 4) # Reshape to image
+        x = x.view(-1, 128, 4, 4) # Reshape to image
         # print("x device:", x.device)
         
         return self.layers(x)
@@ -341,13 +341,13 @@ class Generator(torch.jit.ScriptModule):
         ##################################################################
 
     @torch.jit.script_method
-    def forward(self, z, n_samples: int = 256): #this being 1024 is causing a clash with batch size 256
+    def forward(self, n_samples: int): #this being 1024 is causing a clash with batch size 256
         ##################################################################
         # TODO 1.1: Generate n_samples latents and forward through the
         # network.
         ##################################################################
         # print("z device in general forward:", z.device)
-        # z = torch.randn((n_samples, 128)).cuda()  # Assuming the latent space is 128-dimensional
+        z = torch.normal(0, 1, size=(n_samples,128)).to(torch.float16).to(torch.device('cuda'))
         return self.forward_given_samples(z)
         ##################################################################
         #                          END OF YOUR CODE                      #
@@ -440,7 +440,7 @@ class Discriminator(torch.jit.ScriptModule):
         x = self.layers(x)
         # print(x.shape)
         
-        x = x.mean(dim=[2,3])
+        x = x.sum(dim=(2,3)).view(-1,128)
         # print(x.shape)
         # Flatten the feature map while preserving the batch size
         # x = x.view(x.size(0), -1)

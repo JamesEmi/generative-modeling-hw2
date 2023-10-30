@@ -14,7 +14,13 @@ def get_fid(gen, dataset_name, dataset_resolution, z_dimension, batch_size, num_
     # diffusion model given z
     # Note: The output must be in the range [0, 255]!
     ##################################################################
-    gen_fn = None
+    def gen_fn(num_samples):
+        z = torch.randn(batch_size, 3, dataset_resolution, dataset_resolution).to(gen.device)
+        #if num_samples is not a tensor with a single element, then you need to investigate why that is and ensure that it correctly represents the number of samples you want to generate.
+        imgs = gen.sample_given_z(z, z.shape)
+        # Convert images from [-1, 1] to [0, 255]
+        imgs = ((imgs + 1) * 0.5 * 255).clamp(0, 255).byte()
+        return imgs
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################

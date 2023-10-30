@@ -141,10 +141,7 @@ def train_model(
                 # TODO 1.5 Compute the interpolated batch and run the
                 # discriminator on it.
                 ###################################################################
-                alpha = torch.rand(train_batch.size(0), 1, 1, 1).to(DEVICE)
-                print(alpha.shape)
-                print(train_batch.shape)
-                print(fake_batch.shape)
+                alpha = torch.rand((1)).to(DEVICE)
                 interp = alpha * train_batch + (1 - alpha) * fake_batch
                 discrim_interp = disc(interp)
                 ##################################################################

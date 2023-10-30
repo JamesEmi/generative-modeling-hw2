@@ -40,23 +40,24 @@ class DiffusionModel(nn.Module):
         # TODO 3.1: Pre-compute values needed for forward process.
         ##################################################################
         # This is the coefficient of x_t when predicting x_0
-        self.x_0_pred_coef_1 = torch.sqrt(self.alphas_cumprod / self.alphas_cumprod_prev)
+        self.x_0_pred_coef_1 = 1/torch.sqrt(self.alphas_cumprod)
         # This is the coefficient of pred_noise when predicting x_0
-        self.x_0_pred_coef_2 = torch.sqrt(1. - self.alphas_cumprod) / self.alphas_cumprod_prev
+        self.x_0_pred_coef_2 = torch.sqrt(1 - self.alphas_cumprod) / torch.sqrt(self.alphas_cumprod)
 
         ##################################################################
         # TODO 3.1: Compute the coefficients for the mean.
         ##################################################################
         # This is coefficient of x_0 in the DDPM section
-        self.posterior_mean_coef1 = (self.alphas_cumprod_prev / torch.sqrt(1. - self.alphas_cumprod))
+        self.posterior_mean_coef1 = (torch.sqrt(self.alphas_cumprod_prev)*self.betas)/(1 - self.alphas_cumprod)
         # This is coefficient of x_t in the DDPM section
-        self.posterior_mean_coef2 = (torch.sqrt(self.betas) / torch.sqrt(1. - self.alphas_cumprod))
+        # This is coefficient of x_t in the DDPM section
+        self.posterior_mean_coef2 = (torch.sqrt(alphas)*(1 - self.alphas_cumprod_prev))/(1 - self.alphas_cumprod)
 
         ##################################################################
         # TODO 3.1: Compute posterior variance.
         ##################################################################
         # Calculations for posterior q(x_{t-1} | x_t, x_0) in DDPM
-        self.posterior_variance = self.betas * (1. - self.alphas_cumprod_prev) / (1. - self.alphas_cumprod)
+        self.posterior_variance = self.betas * (1 - self.alphas_cumprod_prev) / (1 - self.alphas_cumprod)
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################
@@ -89,7 +90,7 @@ class DiffusionModel(nn.Module):
         # get_posterior_parameters() for usage examples.
         #################################################################
         pred_noise = self.model(x_t, t)
-        x_0 = extract(self.x_0_pred_coef_1, t, x_t.shape) * x_0_pred - extract(self.x_0_pred_coef_2, t, x_t.shape) * pred_noise
+        x_0 = extract(self.x_0_pred_coef_1, t, x_t.shape) * x_t + extract(self.x_0_pred_coef_2, t, pred_noise.shape) * pred_noise
         x_0 = torch.clamp(x_0, min=-1, max=1)
         ##################################################################
         #                          END OF YOUR CODE                      #
@@ -105,13 +106,15 @@ class DiffusionModel(nn.Module):
         # Hint: To do this, you will need a predicted x_0. You should've
         # already implemented a function to give you x_0 above!
         ##################################################################
-        pred_noise, x_0 = self.model_predictions(x, t)
-        posterior_mean, _, posterior_log_variance_clipped = self.get_posterior_parameters(x_0, x, t)
-        pred_img = posterior_mean + torch.exp(0.5 * posterior_log_variance_clipped) * pred_noise
-        x_0 = None
+        x_0 = self.model_predictions(x, t)[-1]
+        posterior_mean, posterior_variance, posterior_log_variance_clipped = self.get_posterior_parameters(x_0, x, t)
+        
+        # Sample z in the same manner as Code A
+        z = torch.randn(posterior_mean.shape).cuda() if t.all() > 0 else 0 
+        pred_img = posterior_mean + torch.sqrt(posterior_variance) * z.cuda() # Compute pred_img in the same manner as Code A
         ##################################################################
         #                          END OF YOUR CODE                      #
-        ##################################################################
+        #################################################################
         return pred_img, x_0
 
     @torch.no_grad()
@@ -131,25 +134,45 @@ class DiffusionModel(nn.Module):
         return list(zip(times[:-1], times[1:]))
 
     def ddim_step(self, batch, device, tau_i, tau_isub1, img, model_predictions, alphas_cumprod, eta):
+        
+        tau_i = torch.full((batch,), tau_i, device=self.device, dtype=torch.long)
         ##################################################################
         # TODO 3.2: Compute the output image for a single step of the DDIM
         # sampling process.
         ##################################################################
         # Step 1: Predict x_0 and the additive noise for tau_i
-        x_0 = None
+        pred_noise, x_0 = model_predictions(img, tau_i)
+        # Handle cases for tau_isub1 based on Piazza discussion for Q3 (ref: post @139_f7)
+        if tau_isub1 > 0:
+            n = torch.randn_like(img).cuda()
+        else:
+            return img, x_0
+        tau_isub1 = torch.full((batch,), tau_isub1, device=self.device, dtype=torch.long)
+        
 
         # Step 2: Extract \alpha_{\tau_{i - 1}} and \alpha_{\tau_{i}}
-        pass
-
+        alpha_tau_isub1 = extract(alphas_cumprod, tau_isub1, x_0.shape)
+        alpha_tau_i = extract(alphas_cumprod, tau_i, x_0.shape)
+        
         # Step 3: Compute \sigma_{\tau_{i}}
-        pass
+        sigma_tau_i = eta*(1 - alpha_tau_isub1)*extract(self.betas, tau_isub1, x_0.shape)/(1-alpha_tau_i)
+
 
         # Step 4: Compute the coefficient of \epsilon_{\tau_{i}}
-        pass
+        coef = torch.sqrt(1-alpha_tau_isub1-sigma_tau_i)
 
         # Step 5: Sample from q(x_{\tau_{i - 1}} | x_{\tau_t}, x_0)
         # HINT: Use the reparameterization trick
-        img = None
+        # U_i = torch.sqrt(alpha_isub1)*x_0 + coef*pred_noise
+        # epsilon = torch.randn_like(img)
+        # print("alpha_tau_isub1:", alpha_tau_isub1.shape)
+        # print("x_0:", x_0.shape)
+        # print("coef:", coef.shape)
+        # print("pred_noise:", pred_noise.shape)
+        # print("sigma_tau_i:", sigma_tau_i.shape)
+        # print("n:", n.shape)
+        U_i = torch.sqrt(alpha_tau_isub1)*x_0 + coef*pred_noise
+        img = U_i + torch.sqrt(sigma_tau_i)*n
         ##################################################################
         #                          END OF YOUR CODE                      #
         ##################################################################

@@ -36,11 +36,11 @@ def get_optimizers_and_schedulers(gen, disc):
     total_iterations_generator = 100000
 
     # Lambda functions that define the learning rate decay
-    lambda_discriminator = lambda iteration: 1 - iteration / total_iterations_discriminator
-    lambda_generator = lambda iteration: 1 - iteration / total_iterations_generator
+    lambda_discriminator = lambda x: 1 - x / total_iterations_discriminator
+    lambda_generator = lambda x: 1 - x / total_iterations_generator
 
     # Set up the schedulers using LambdaLR
-    scheduler_discriminator = torch.optim.lr_scheduler.LambdaLR(optim_discriminator, lr_lambda=lambda_discriminator)
+    scheduler_discriminator = torch.optim.lr_scheduler.LambdaLR(optim_discriminator, lambda_discriminator)
     scheduler_generator = torch.optim.lr_scheduler.LambdaLR(optim_generator, lr_lambda=lambda_generator)
 
     

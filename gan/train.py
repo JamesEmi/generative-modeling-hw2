@@ -37,7 +37,7 @@ def get_optimizers_and_schedulers(gen, disc):
 
     # Set up the schedulers using LambdaLR
     scheduler_discriminator = torch.optim.lr_scheduler.LambdaLR(optim_discriminator, lambda_discriminator)
-    scheduler_generator = torch.optim.lr_scheduler.LambdaLR(optim_generator, lr_lambda=lambda_generator)
+    scheduler_generator = torch.optim.lr_scheduler.LambdaLR(optim_generator, lambda_generator)
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################

@@ -28,9 +28,6 @@ def get_optimizers_and_schedulers(gen, disc):
     # The learning rate for the generator should be decayed to 0 over
     # 100K iterations.
     ##################################################################
-    # scheduler_discriminator = None
-    # scheduler_generator = None
-    
     total_iterations_discriminator = 500000
     total_iterations_generator = 100000
 
@@ -41,8 +38,6 @@ def get_optimizers_and_schedulers(gen, disc):
     # Set up the schedulers using LambdaLR
     scheduler_discriminator = torch.optim.lr_scheduler.LambdaLR(optim_discriminator, lambda_discriminator)
     scheduler_generator = torch.optim.lr_scheduler.LambdaLR(optim_generator, lr_lambda=lambda_generator)
-
-    
     ##################################################################
     #                          END OF YOUR CODE                      #
     ##################################################################
@@ -84,10 +79,8 @@ def train_model(
 ):
     torch.backends.cudnn.benchmark = True # speed up training
     ds_transforms = build_transforms()
-    dataset = Dataset(root="/notebooks/Homework/hw2/generative-modeling-hw2/datasets/CUB_200_2011_32", transform=ds_transforms)
-    print(f"Number of images found: {len(dataset)}")
     train_loader = torch.utils.data.DataLoader(
-        dataset,
+        Dataset(root="/notebooks/Homework/hw2/generative-modeling-hw2/datasets/CUB_200_2011_32", transform=ds_transforms),
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -120,8 +113,6 @@ def train_model(
                 # 2. Compute discriminator output on the train batch.
                 # 3. Compute the discriminator output on the generated data.
                 ##################################################################
-                # 1. Compute generator output
-                # z = torch.randn(train_batch.size(0), 128).to(DEVICE)  # Assuming latent vector size is 128
                 fake_batch = gen(train_batch.shape[0])
                 # print(fake_batch.shape)
                 
@@ -130,7 +121,6 @@ def train_model(
                 
                 # 3. Compute the discriminator output on the generated data.
                 discrim_fake = disc(fake_batch)
-                
                 ##################################################################
                 #                          END OF YOUR CODE                      #
                 ##################################################################
@@ -153,7 +143,6 @@ def train_model(
             optim_discriminator.zero_grad(set_to_none=True)
             scaler.scale(discriminator_loss).backward()
             scaler.step(optim_discriminator)
-            optim_discriminator.step()  # Explicitly calling optimizer's step function.
             scheduler_discriminator.step()
 
             if iters % 5 == 0:
@@ -175,7 +164,6 @@ def train_model(
                 optim_generator.zero_grad(set_to_none=True)
                 scaler.scale(generator_loss).backward()
                 scaler.step(optim_generator)
-                optim_generator.step()  # Explicitly calling optimizer's step function.
                 scheduler_generator.step()
 
             if iters % log_period == 0 and iters != 0:
@@ -184,9 +172,8 @@ def train_model(
                         ##################################################################
                         # TODO 1.2: Generate samples using the generator.
                         # Make sure they lie in the range [0, 1]!
-                        #################################################################
+                        ##################################################################
                         generated_samples = (gen(train_batch.shape[0]) + 1) / 2  # Rescale to [0, 1]
-                        # generated_samples = None
                         ##################################################################
                         #                          END OF YOUR CODE                      #
                         ##################################################################

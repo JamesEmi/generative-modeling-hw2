@@ -7,7 +7,6 @@ from torchvision import transforms
 from torchvision.utils import save_image
 from PIL import Image
 from torchvision.datasets import VisionDataset
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def build_transforms():
@@ -85,11 +84,10 @@ def train_model(
 ):
     torch.backends.cudnn.benchmark = True # speed up training
     ds_transforms = build_transforms()
-    dataset = Dataset(root="/notebooks/Homework/hw2/generative-modeling-hw2/gan/datasets/CUB_200_2011_32", transform=ds_transforms)
+    dataset = Dataset(root="/notebooks/Homework/hw2/generative-modeling-hw2/datasets/CUB_200_2011_32", transform=ds_transforms)
     print(f"Number of images found: {len(dataset)}")
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        # /notebooks/Homework/hw2/generative-modeling-hw2/gan/datasets/CUB_200_2011_32
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -112,7 +110,7 @@ def train_model(
     while iters < num_iterations:
         for train_batch in train_loader:
             with torch.cuda.amp.autocast(enabled=amp_enabled):
-                train_batch = train_batch.to(DEVICE)
+                train_batch = train_batch.cuda()
                 
                 ####################### UPDATE DISCRIMINATOR #####################
                 ##################################################################
@@ -141,7 +139,7 @@ def train_model(
                 # TODO 1.5 Compute the interpolated batch and run the
                 # discriminator on it.
                 ###################################################################
-                alpha = torch.rand((1)).to(DEVICE)
+                alpha = torch.rand((1)).to(device=train_batch.device)
                 interp = alpha * train_batch + (1 - alpha) * fake_batch
                 discrim_interp = disc(interp)
                 ##################################################################
@@ -187,8 +185,7 @@ def train_model(
                         # TODO 1.2: Generate samples using the generator.
                         # Make sure they lie in the range [0, 1]!
                         #################################################################
-                        generated_samples = gen(train_batch.shape[0])
-                        generated_samples = (generated_samples + 1) / 2  # Rescale to [0, 1]
+                        generated_samples = (gen(train_batch.shape[0]) + 1) / 2  # Rescale to [0, 1]
                         # generated_samples = None
                         ##################################################################
                         #                          END OF YOUR CODE                      #
